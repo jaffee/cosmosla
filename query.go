@@ -38,7 +38,7 @@ func (m *Main) Read(collection *mgo.Collection) error {
 	if err != nil {
 		return errors.Wrap(err, "finding first segment record")
 	}
-	fmt.Printf("%v segment count: %v\n", time.Since(start), res)
+	fmt.Printf("%v segment count: %v\n", time.Since(start), n)
 
 	res = Person{}
 	start = time.Now()
