@@ -33,6 +33,13 @@ func (m *Main) Read(collection *mgo.Collection) error {
 	}
 	fmt.Printf("%v first segment record:\n%v\n", time.Since(start), res)
 
+	start = time.Now()
+	n, err = collection.Find(bson.M{"tiles.os": true, "tiles.du": true}).Count()
+	if err != nil {
+		return errors.Wrap(err, "finding first segment record")
+	}
+	fmt.Printf("%v segment count: %v\n", time.Since(start), res)
+
 	res = Person{}
 	start = time.Now()
 	// idbytes, err := hex.DecodeString("5a09a414f21bc91a5c7e7669")
