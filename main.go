@@ -19,16 +19,19 @@ import (
 var (
 	database string
 	password string
+	account  string
 )
 
 func init() {
 	database = utils.GetEnvVarOrExit("AZURE_DATABASE")
 	password = utils.GetEnvVarOrExit("AZURE_DATABASE_PASSWORD")
+	account = utils.GetEnvVarOrExit("AZURE_COSMOS_ACCOUNT")
 }
 
 // Person represents a document in the collection
 type Person struct {
 	Id    bson.ObjectId `bson:"_id,omitempty"`
+	Alive string
 	Tiles map[string]bool
 }
 
@@ -38,6 +41,7 @@ type Main struct {
 	Concurrency int
 	Query       bool
 	Seed        int64
+	JustCreate  bool
 }
 
 func main() {
@@ -47,6 +51,7 @@ func main() {
 	flag.BoolVar(&m.Insert, "insert", false, "do insertions")
 	flag.BoolVar(&m.Query, "query", false, "do queries")
 	flag.Int64Var(&m.Seed, "seed", 1, "seed for rng")
+	flag.BoolVar(&m.JustCreate, "just-create", false, "just create the collection and exit")
 	flag.Parse()
 	err := m.Run()
 	if err != nil {
@@ -58,10 +63,10 @@ func (m *Main) Run() error {
 	rand.Seed(m.Seed)
 	// DialInfo holds options for establishing a session with a MongoDB cluster.
 	dialInfo := &mgo.DialInfo{
-		Addrs:    []string{fmt.Sprintf("%s.documents.azure.com:10255", database)}, // Get HOST + PORT
+		Addrs:    []string{fmt.Sprintf("%s.documents.azure.com:10255", account)}, // Get HOST + PORT
 		Timeout:  60 * time.Second,
 		Database: database, // It can be anything
-		Username: database, // Username
+		Username: account,  // Username
 		Password: password, // PASSWORD
 		DialServer: func(addr *mgo.ServerAddr) (net.Conn, error) {
 			return tls.Dial("tcp", addr.String(), &tls.Config{})
@@ -74,6 +79,7 @@ func (m *Main) Run() error {
 	if err != nil {
 		return errors.Errorf("Can't connect to mongo, go error %v\n", err)
 	}
+	log.Println("got session")
 
 	defer session.Close()
 
@@ -86,6 +92,10 @@ func (m *Main) Run() error {
 
 	// get collection
 	collection := session.DB(database).C("people")
+
+	if m.JustCreate {
+		return nil
+	}
 
 	if m.Insert {
 		writes := make(chan struct{}, m.Concurrency)
@@ -155,6 +165,7 @@ func GenPerson() *Person {
 	}
 	return &Person{
 		Tiles: tiles,
+		Alive: "yes",
 	}
 }
 
